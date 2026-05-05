@@ -23,7 +23,11 @@ export function HandoffArrow({ active, label }: HandoffArrowProps) {
         <ArrowDown className="h-3.5 w-3.5" />
         {active ? (
           <motion.div
-            layoutId="handoff-pulse"
+            // No layoutId — sharing one across multiple active arrows makes
+            // Framer Motion treat them as "the same element moving between
+            // positions" and continuously remeasures layout, which churns
+            // React reconciliation and disrupts scroll. The pulse animation
+            // doesn't need shared-layout semantics anyway.
             className="absolute inset-0 rounded-full border border-accent"
             animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}

@@ -321,30 +321,6 @@ function describeFetchError(err: unknown): string {
   return "Unknown error contacting /api/pipeline/run.";
 }
 
-function startBrainPolling(
-  merchantId: string,
-  onTick: (next: ApiBrainResponse) => void,
-): () => void {
-  let cancelled = false;
-  const interval = setInterval(async () => {
-    if (cancelled) return;
-    try {
-      const res = await fetch(`/api/brain/${merchantId}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await readApiResponse<ApiBrainResponse>(res);
-      if (cancelled) return;
-      if (!("brain" in data)) return;
-      onTick(data);
-    } catch {
-      // swallow — next tick will retry
-    }
-  }, 600);
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
-}
-
 function buildStatuses(b: MerchantBrain): Record<StageId, StageStatus> {
   const out: Record<StageId, StageStatus> = {
     discovery: "pending",
@@ -358,19 +334,6 @@ function buildStatuses(b: MerchantBrain): Record<StageId, StageStatus> {
     if (b.artifacts[s]) out[s] = "complete";
   });
   return out;
-}
-
-function buildStatusesWithRunning(
-  b: MerchantBrain,
-): Record<StageId, StageStatus> {
-  const completed = buildStatuses(b);
-  for (const stage of STAGE_ORDER) {
-    if (completed[stage] === "pending") {
-      completed[stage] = "running";
-      break;
-    }
-  }
-  return completed;
 }
 
 function allPending(): Record<StageId, StageStatus> {
