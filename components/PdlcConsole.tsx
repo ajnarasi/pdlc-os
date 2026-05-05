@@ -97,40 +97,59 @@ export function PdlcConsole({
       runId: `live-${Date.now().toString(36)}`,
     }));
     setStageStatus(allPending());
-    setStageStatus((prev) => ({ ...prev, discovery: "running" }));
-
-    const stopPolling = startBrainPolling(merchantId, (next) => {
-      if (stopFlag.current) return;
-      setBrain(next.brain);
-      setCurrentBrainSource(next.source);
-      setCurrentBrainPath(next.path);
-      setStageStatus(buildStatusesWithRunning(next.brain));
-    });
 
     try {
-      const res = await fetch("/api/pipeline/run", {
+      // Step 1 — init: server resets the brain to empty + writes pain to KV.
+      const initRes = await fetch("/api/pipeline/init", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          merchantId,
-          painPoint,
-          executor: settings.executor,
-          model: settings.model,
-          apiKey: settings.apiKey,
-          autoInit: true,
-        }),
+        body: JSON.stringify({ merchantId, painPoint }),
       });
-      const data = await readApiResponse<ApiRunSuccess>(res);
-      if (!res.ok || !("ok" in data) || !data.ok) {
-        const message = "error" in data ? data.error : "pipeline run failed";
+      const initData = await readApiResponse<ApiInitSuccess>(initRes);
+      if (!initRes.ok || !("ok" in initData) || !initData.ok) {
+        const message = "error" in initData ? initData.error : "init failed";
         setRunError(message);
+        return;
+      }
+      setBrain(initData.brain);
+
+      // Step 2 — run each stage as its own request. Each call is ≤60s,
+      // safely under any tier / proxy timeout. Audit ribbon updates after
+      // each stage settles, so the demo visibly progresses.
+      for (const stage of STAGE_ORDER) {
+        if (stopFlag.current) break;
+        setStageStatus((prev) => ({ ...prev, [stage]: "running" }));
+        const stageRes = await fetch(
+          `/api/pipeline/stage/${encodeURIComponent(stage)}`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              merchantId,
+              executor: settings.executor,
+              model: settings.model,
+              apiKey: settings.apiKey,
+            }),
+          },
+        );
+        const stageData = await readApiResponse<ApiStageSuccess>(stageRes);
+        if (!stageRes.ok || !("ok" in stageData) || !stageData.ok) {
+          const message =
+            "error" in stageData
+              ? `Stage ${stage}: ${stageData.error}`
+              : `Stage ${stage} failed`;
+          setRunError(message);
+          setStageStatus((prev) => ({ ...prev, [stage]: "pending" }));
+          return;
+        }
+        setBrain(stageData.brain);
+        setStageStatus(buildStatuses(stageData.brain));
       }
     } catch (err) {
       setRunError(describeFetchError(err));
     } finally {
       stopFlag.current = true;
-      stopPolling();
-      // Final fetch in case the last stage's poll missed
+      // Defensive final fetch in case our state is behind KV.
       try {
         const finalRes = await fetch(`/api/brain/${merchantId}`, {
           cache: "no-store",
@@ -143,7 +162,7 @@ export function PdlcConsole({
           setStageStatus(buildStatuses(final.brain));
         }
       } catch {
-        // ignore — UI already shows the last polled state
+        // ignore — UI already shows the last in-flight state.
       }
       setIsRunning(false);
     }
@@ -232,17 +251,21 @@ export function PdlcConsole({
   );
 }
 
-interface ApiRunSuccess {
+interface ApiInitSuccess {
   ok: true;
   merchantId: string;
-  executor: string;
+  runId: string;
+  brain: MerchantBrain;
+}
+
+interface ApiStageSuccess {
+  ok: true;
+  merchantId: string;
+  stage: StageId;
+  hash: string;
   durationMs: number;
+  brain: MerchantBrain;
 }
-interface ApiRunFailure {
-  error: string;
-  exitCode?: number;
-}
-type ApiRunResponse = ApiRunSuccess | ApiRunFailure;
 
 interface ApiBrainResponse {
   brain: MerchantBrain;

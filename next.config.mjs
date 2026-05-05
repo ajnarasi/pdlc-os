@@ -12,6 +12,11 @@ const nextConfig = {
       "./lib/server/skill-md/**/*",
       "./state/jtbd-catalog.json",
     ],
+    "/api/pipeline/stage/[stage]": [
+      "./lib/server/skill-md/**/*",
+      "./state/jtbd-catalog.json",
+    ],
+    "/api/pipeline/init": ["./state/jtbd-catalog.json"],
     "/api/archetypes/[id]": ["./state/jtbd-catalog.json"],
     "/api/jtbds": ["./state/jtbd-catalog.json"],
     "/api/brain/[merchant]": ["./state/jtbd-catalog.json"],
