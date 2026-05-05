@@ -39,7 +39,7 @@ export function PdlcConsole({
     () => buildStatuses(initialBrain),
   );
   const [currentBrainSource, setCurrentBrainSource] = useState<
-    "file" | "fallback-demo"
+    "kv" | "file" | "fallback-demo"
   >(brainSource);
   const [currentBrainPath, setCurrentBrainPath] = useState<string | undefined>(
     brainPath,
@@ -149,13 +149,18 @@ export function PdlcConsole({
       setRunError(describeFetchError(err));
     } finally {
       stopFlag.current = true;
-      // Defensive final fetch in case our state is behind KV.
+      // Defensive final fetch — ONLY trust it if KV returned a real
+      // persisted brain. If KV momentarily misses (transient hiccup right
+      // after the support-stage write), the server falls back to the demo
+      // seed; we must NOT clobber the just-completed live run with that
+      // fallback, or the UI appears to "reset" at the end of a successful
+      // 6-stage run.
       try {
         const finalRes = await fetch(`/api/brain/${merchantId}`, {
           cache: "no-store",
         });
         const final = await readApiResponse<ApiBrainResponse>(finalRes);
-        if ("brain" in final) {
+        if ("brain" in final && final.source !== "fallback-demo") {
           setBrain(final.brain);
           setCurrentBrainSource(final.source);
           setCurrentBrainPath(final.path);
@@ -269,7 +274,10 @@ interface ApiStageSuccess {
 
 interface ApiBrainResponse {
   brain: MerchantBrain;
-  source: "file" | "fallback-demo";
+  // Server returns "kv" when read from Vercel KV, "file" for filesystem
+  // (local dev), and "fallback-demo" when both stores miss. The Header chip
+  // collapses kv+file into "file" since either way it's a real persisted brain.
+  source: "kv" | "file" | "fallback-demo";
   path?: string;
 }
 
