@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { defaultPassEval } from "../karpathy";
 import {
   composeSkillContext,
@@ -18,6 +19,8 @@ const DEFAULT_MAX_TOKENS = Number.parseInt(
   process.env.PDLC_ANTHROPIC_MAX_TOKENS ?? "16384",
   10,
 );
+
+const TOOL_NAME = "submit_artifact";
 
 export class AnthropicExecutor implements Executor {
   readonly name = "anthropic" as const;
@@ -47,16 +50,38 @@ export class AnthropicExecutor implements Executor {
     const skillContext = composeSkillContext(skills);
     const { systemPrompt, userPrompt } = buildPromptBundle(ctx, skillContext);
 
+    // Convert the Zod schema into a JSON Schema and define a single tool.
+    // Forcing tool_choice on this tool makes the model emit a structured
+    // tool_use block whose `input` matches the schema exactly — no prose,
+    // no fenced JSON, no schema drift, no truncated freeform output.
+    const inputSchema = zodToJsonSchema(schema, {
+      target: "openApi3",
+      $refStrategy: "none",
+    }) as Record<string, unknown>;
+
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: DEFAULT_MAX_TOKENS,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
+      tools: [
+        {
+          name: TOOL_NAME,
+          description: `Submit the ${ctx.stage} stage artifact for the merchant brain. Fill every required field strictly — do not invent fields, do not skip fields, do not nest extra structure.`,
+          input_schema: inputSchema as Anthropic.Tool["input_schema"],
+        },
+      ],
+      tool_choice: { type: "tool", name: TOOL_NAME },
     });
 
-    const text = extractText(response);
-    const json = parseJsonStrict(text);
-    const artifact = schema.parse(json) as T;
+    const toolBlock = extractToolUse(response, TOOL_NAME);
+    if (!toolBlock) {
+      throw new Error(
+        `Anthropic executor: model did not return a ${TOOL_NAME} tool_use block (stop_reason=${response.stop_reason}). First text: ${extractText(response).slice(0, 400)}`,
+      );
+    }
+
+    const artifact = schema.parse(toolBlock.input) as T;
 
     return {
       artifact,
@@ -68,14 +93,36 @@ export class AnthropicExecutor implements Executor {
       })),
       evalLog: defaultPassEval(
         ctx.stage,
-        `Anthropic ${this.model} produced schema-valid artifact under skill markdown system prompt.`,
+        `Anthropic ${this.model} produced schema-valid artifact via tool_use enforcement.`,
       ),
       durationMs: Date.now() - start,
-      rawResponse: text,
+      rawResponse: JSON.stringify(toolBlock.input),
       inputTokens: response.usage?.input_tokens,
       outputTokens: response.usage?.output_tokens,
     };
   }
+}
+
+interface ToolUseBlock {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+function extractToolUse(
+  response: Anthropic.Message,
+  expectedName: string,
+): ToolUseBlock | null {
+  for (const block of response.content) {
+    if (
+      block.type === "tool_use" &&
+      (block as ToolUseBlock).name === expectedName
+    ) {
+      return block as ToolUseBlock;
+    }
+  }
+  return null;
 }
 
 function extractText(response: Anthropic.Message): string {
@@ -84,22 +131,4 @@ function extractText(response: Anthropic.Message): string {
     if (block.type === "text") parts.push(block.text);
   }
   return parts.join("\n").trim();
-}
-
-function parseJsonStrict(raw: string): unknown {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = (fenced ? fenced[1] : raw).trim();
-  const firstBrace = body.indexOf("{");
-  const lastBrace = body.lastIndexOf("}");
-  const candidate =
-    firstBrace !== -1 && lastBrace > firstBrace
-      ? body.slice(firstBrace, lastBrace + 1)
-      : body;
-  try {
-    return JSON.parse(candidate);
-  } catch (err) {
-    throw new Error(
-      `Anthropic executor: failed to parse JSON response. Raw text (first 800 chars):\n${raw.slice(0, 800)}\n\nParser error: ${(err as Error).message}`,
-    );
-  }
 }
