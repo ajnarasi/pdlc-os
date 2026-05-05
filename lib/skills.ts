@@ -48,7 +48,15 @@ export const SKILL_BINDINGS: Record<StageId, SkillBinding> = {
   },
   design: {
     stage: "design",
-    pmosSkills: ["iso-payments", "enable-apm", "api-design"],
+    pmosSkills: [
+      "iso-payments",
+      "enable-apm",
+      "api-design",
+      "prototype",
+      "napkin-sketch",
+      "generate-ai-prototype",
+      "prototype-feedback",
+    ],
     brainSeeds: [
       {
         label: "Klarna ↔ Commerce Hub field mapping (template)",
@@ -119,6 +127,60 @@ export const SKILL_BINDINGS: Record<StageId, SkillBinding> = {
       {
         label: "PM-OS feature-results skill",
         path: `${PMOS_ROOT}/feature-results/SKILL.md`,
+      },
+    ],
+  },
+  marketing: {
+    stage: "marketing",
+    pmosSkills: ["marketing-launch"],
+    brainSeeds: [
+      {
+        label: "Launch artifact (pilots, success metrics, competitive)",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.launch`,
+      },
+      {
+        label: "Discovery artifact (archetype, JTBD, voice-of-customer)",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.discovery`,
+      },
+      {
+        label: "Prioritization (RICE GO + lift hypothesis)",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.prioritization`,
+      },
+    ],
+  },
+  "sales-enablement": {
+    stage: "sales-enablement",
+    pmosSkills: ["sales-enablement"],
+    brainSeeds: [
+      {
+        label: "Marketing positioning + audience messages",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.marketing`,
+      },
+      {
+        label: "Launch competitive landscape",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.launch.competitive`,
+      },
+      {
+        label: "Discovery archetype + qualifying signals",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.discovery`,
+      },
+    ],
+  },
+  "e2e-test-plan": {
+    stage: "e2e-test-plan",
+    pmosSkills: ["e2e-test-plan"],
+    brainSeeds: [
+      {
+        label: "Design field map + ISO envelope (contract surface)",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.design`,
+      },
+      {
+        label: "Delivery Vitest stubs + readiness checklist",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.delivery`,
+      },
+      {
+        label: "Marketing claims (every public claim must be testable)",
+        path: `${APM_ROOT}/PDLC-OS/state/brain.json#artifacts.marketing.proofPoints`,
       },
     ],
   },

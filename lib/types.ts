@@ -4,7 +4,10 @@ export type StageId =
   | "design"
   | "delivery"
   | "launch"
-  | "support";
+  | "support"
+  | "marketing"
+  | "sales-enablement"
+  | "e2e-test-plan";
 
 export const STAGE_ORDER: StageId[] = [
   "discovery",
@@ -13,7 +16,31 @@ export const STAGE_ORDER: StageId[] = [
   "delivery",
   "launch",
   "support",
+  "marketing",
+  "sales-enablement",
+  "e2e-test-plan",
 ];
+
+export const CANONICAL_STAGES: StageId[] = [
+  "discovery",
+  "prioritization",
+  "design",
+  "delivery",
+  "launch",
+  "support",
+];
+
+export const EXTENSION_STAGES: StageId[] = [
+  "marketing",
+  "sales-enablement",
+  "e2e-test-plan",
+];
+
+export type StageKind = "canonical" | "extension";
+
+export function stageKind(id: StageId): StageKind {
+  return EXTENSION_STAGES.includes(id) ? "extension" : "canonical";
+}
 
 export interface StageMeta {
   id: StageId;
@@ -22,6 +49,7 @@ export interface StageMeta {
   subtitle: string;
   skill: string;
   endUser: string;
+  kind: StageKind;
 }
 
 export const STAGES: Record<StageId, StageMeta> = {
@@ -32,6 +60,7 @@ export const STAGES: Record<StageId, StageMeta> = {
     subtitle: "Capture pain. Validate user.",
     skill: "user-research-synthesis + journey-map",
     endUser: "Product",
+    kind: "canonical",
   },
   prioritization: {
     id: "prioritization",
@@ -40,14 +69,16 @@ export const STAGES: Record<StageId, StageMeta> = {
     subtitle: "Quantify impact. Rank value vs. effort.",
     skill: "impact-sizing + prioritize",
     endUser: "Product",
+    kind: "canonical",
   },
   design: {
     id: "design",
     num: "03",
     title: "Design",
-    subtitle: "Map requirements. Define standards.",
-    skill: "iso-payments + integration patterns",
+    subtitle: "Map requirements. Sketch surface. Define standards.",
+    skill: "iso-payments + prototype + integration patterns",
     endUser: "Product + Developers",
+    kind: "canonical",
   },
   delivery: {
     id: "delivery",
@@ -56,6 +87,7 @@ export const STAGES: Record<StageId, StageMeta> = {
     subtitle: "Manage scope. Verify integration.",
     skill: "create-tickets + checkout-sdk harness",
     endUser: "Developers",
+    kind: "canonical",
   },
   launch: {
     id: "launch",
@@ -64,6 +96,7 @@ export const STAGES: Record<StageId, StageMeta> = {
     subtitle: "Ensure readiness. Execute GTM.",
     skill: "launch-checklist + competitor-analysis",
     endUser: "Product + Marketing",
+    kind: "canonical",
   },
   support: {
     id: "support",
@@ -72,6 +105,34 @@ export const STAGES: Record<StageId, StageMeta> = {
     subtitle: "Triage signal. Loop back to Discovery.",
     skill: "feature-results + retention-analysis",
     endUser: "Product + Support",
+    kind: "canonical",
+  },
+  marketing: {
+    id: "marketing",
+    num: "EXT 07",
+    title: "Marketing",
+    subtitle: "Position. Craft hero copy. Sequence the launch.",
+    skill: "marketing-launch",
+    endUser: "PMM + Copywriter",
+    kind: "extension",
+  },
+  "sales-enablement": {
+    id: "sales-enablement",
+    num: "EXT 08",
+    title: "Sales Enablement",
+    subtitle: "Equip the rep. Battlecard. Close ask.",
+    skill: "sales-enablement",
+    endUser: "AE + SE",
+    kind: "extension",
+  },
+  "e2e-test-plan": {
+    id: "e2e-test-plan",
+    num: "EXT 09",
+    title: "E2E Test Plan",
+    subtitle: "Critical journeys. SLOs. Rollback. Claims validation.",
+    skill: "e2e-test-plan",
+    endUser: "QA + Product",
+    kind: "extension",
   },
 };
 
@@ -173,6 +234,8 @@ export interface DesignArtifact {
   }[];
   isoEnvelope: { messageType: string; sample: string }[];
   unmappableFields: { field: string; reason: string; mitigation: string }[];
+  napkinSketch?: string;
+  prototypePrompt?: string;
 }
 
 export interface DeliveryArtifact {
@@ -203,6 +266,108 @@ export interface SupportArtifact {
   };
 }
 
+export interface MarketingArtifact {
+  positioningStatement: string;
+  headlineOptions: string[];
+  subheadOptions: string[];
+  audienceMessages: {
+    audience: string;
+    painSentence: string;
+    reliefSentence: string;
+    cta: string;
+  }[];
+  proofPoints: string[];
+  channelMix: {
+    channel: string;
+    hook: string;
+    sequencingDay: string;
+  }[];
+  launchSequence: {
+    milestone: string;
+    timing: string;
+  }[];
+  antiMessages: string[];
+}
+
+export interface SalesEnablementArtifact {
+  icp: {
+    archetypeId: string;
+    archetypeName: string;
+    sizeBand: string;
+    channel: string;
+    vertical: string;
+    qualifyingSignals: string[];
+    disqualifyingSignals: string[];
+  };
+  discoveryQuestions: { question: string; listenFor: string }[];
+  objectionHandling: {
+    objection: string;
+    reframe: string;
+    evidence: string;
+  }[];
+  demoScript: {
+    step: string;
+    whatTheySee: string;
+    whatToSay: string;
+  }[];
+  competitiveBattlecard: {
+    competitor: string;
+    whereWeWin: string;
+    whereTheyWin: string;
+    tieBreaker: string;
+  }[];
+  roiInputs: {
+    variable: string;
+    prompt: string;
+    defaultValue: string;
+    sourceOfDefault: string;
+  }[];
+  closeAsk: string;
+}
+
+export interface E2eTestPlanArtifact {
+  criticalJourneys: {
+    id: string;
+    title: string;
+    persona: string;
+    steps: string[];
+    successCriterion: string;
+  }[];
+  regressionMatrix: {
+    dimension: string;
+    values: string[];
+    mustHold: string;
+  }[];
+  edgeCases: {
+    name: string;
+    trigger: string;
+    expectedBehavior: string;
+    detectionSignal: string;
+  }[];
+  performanceTargets: {
+    metric: string;
+    target: string;
+    source: string;
+    blocking: boolean;
+  }[];
+  launchBlockers: {
+    blocker: string;
+    owner: string;
+    howVerified: string;
+  }[];
+  rollbackCriteria: {
+    signal: string;
+    threshold: string;
+    rollbackAction: string;
+    autoOrManual: "auto" | "manual" | "auto-with-human-cancel";
+  }[];
+  claimsValidation: {
+    claim: string;
+    testThatProvesIt: string;
+    source: string;
+  }[];
+}
+
 export interface MerchantBrain {
   runId: string;
   merchantId?: string;
@@ -216,6 +381,9 @@ export interface MerchantBrain {
     delivery?: DeliveryArtifact;
     launch?: LaunchArtifact;
     support?: SupportArtifact;
+    marketing?: MarketingArtifact;
+    "sales-enablement"?: SalesEnablementArtifact;
+    "e2e-test-plan"?: E2eTestPlanArtifact;
   };
   audit: AuditEntry[];
   evals: Partial<Record<StageId, KarpathyEvalLog>>;

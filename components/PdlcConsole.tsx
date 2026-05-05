@@ -9,6 +9,7 @@ import { HandoffArrow } from "@/components/handoff/HandoffArrow";
 import { AuditRibbon } from "@/components/audit/AuditRibbon";
 import { BrainView } from "@/components/brain/BrainView";
 import { SettingsModal } from "@/components/settings/SettingsModal";
+import { PrdExportModal } from "@/components/prd/PrdExportModal";
 import { STAGES, STAGE_ORDER } from "@/lib/types";
 import type { MerchantBrain, StageId } from "@/lib/types";
 import { DEMO_PIX_BRAIN } from "@/lib/seed/demoPix";
@@ -48,6 +49,12 @@ export function PdlcConsole({
   const [runError, setRunError] = useState<string | null>(null);
   const [settings, setSettings] = useState<PdlcSettings>({ executor: "cached" });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prdOpen, setPrdOpen] = useState(false);
+  const [prdLoading, setPrdLoading] = useState(false);
+  const [prdError, setPrdError] = useState<string | null>(null);
+  const [prdTitle, setPrdTitle] = useState<string | null>(null);
+  const [prdBody, setPrdBody] = useState<string | null>(null);
+  const [prdDurationMs, setPrdDurationMs] = useState<number | null>(null);
 
   const merchantId = activeMerchantId ?? brain.merchantId ?? "A1";
   const handoffLabels = useMemo(buildHandoffLabels, []);
@@ -179,9 +186,64 @@ export function PdlcConsole({
     writeSettings(updated);
   }
 
+  const stageCount = STAGE_ORDER.filter((s) => brain.artifacts[s]).length;
+  const prdReady = stageCount >= STAGE_ORDER.length;
+
+  async function exportPrd() {
+    if (prdLoading) return;
+    setPrdOpen(true);
+    setPrdLoading(true);
+    setPrdError(null);
+    setPrdTitle(null);
+    setPrdBody(null);
+    setPrdDurationMs(null);
+    try {
+      const res = await fetch("/api/pipeline/export/prd", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          merchantId,
+          apiKey: settings.apiKey,
+          model: settings.model,
+        }),
+      });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        const text = await res.text();
+        setPrdError(
+          `Server returned ${res.status} ${res.statusText} (non-JSON). First chars: ${text.slice(0, 200).replace(/\s+/g, " ")}`,
+        );
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setPrdError(typeof data.error === "string" ? data.error : "PRD export failed.");
+        return;
+      }
+      setPrdTitle(data.title);
+      setPrdBody(data.prdMarkdown);
+      setPrdDurationMs(data.durationMs ?? null);
+    } catch (err) {
+      setPrdError(err instanceof Error ? err.message : "Network error.");
+    } finally {
+      setPrdLoading(false);
+    }
+  }
+
   return (
     <div className="relative flex min-h-screen flex-col">
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
+      <Header
+        onOpenSettings={() => setSettingsOpen(true)}
+        onExportPrd={exportPrd}
+        exportPrdDisabled={!prdReady || prdLoading}
+        exportPrdLabel={
+          prdLoading
+            ? "synthesizing…"
+            : prdReady
+              ? "Export PRD"
+              : `Export PRD (${stageCount}/${STAGE_ORDER.length})`
+        }
+      />
 
       <div className="flex flex-1 flex-col lg:flex-row">
         <div className="lg:w-[420px] lg:flex-shrink-0">
@@ -222,14 +284,28 @@ export function PdlcConsole({
               const artifact = brain.artifacts[stageId];
               const evalLog = brain.evals[stageId];
               const status = stageStatus[stageId];
+              const prevStage = idx > 0 ? STAGES[STAGE_ORDER[idx - 1]] : null;
+              const showExtensionSeparator =
+                prevStage?.kind === "canonical" && stage.kind === "extension";
               return (
                 <div key={stageId}>
+                  {showExtensionSeparator ? (
+                    <div className="my-4 flex items-center gap-3 text-[0.66rem] uppercase tracking-[0.18em] text-inkFaint">
+                      <span className="h-px flex-1 bg-rule" />
+                      <span>— extension stages —</span>
+                      <span className="h-px flex-1 bg-rule" />
+                    </div>
+                  ) : null}
                   <StageCard
                     stage={stage}
                     status={status}
                     artifact={artifact}
                     evalLog={evalLog}
                     defaultExpanded={idx === 0}
+                    merchantId={merchantId}
+                    executor={settings.executor}
+                    apiKey={settings.apiKey}
+                    model={settings.model}
                   />
                   {idx < STAGE_ORDER.length - 1 ? (
                     <HandoffArrow
@@ -251,6 +327,16 @@ export function PdlcConsole({
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onChange={(next) => setSettings(next)}
+      />
+
+      <PrdExportModal
+        open={prdOpen}
+        loading={prdLoading}
+        error={prdError}
+        title={prdTitle}
+        prdMarkdown={prdBody}
+        durationMs={prdDurationMs}
+        onClose={() => setPrdOpen(false)}
       />
     </div>
   );
@@ -322,14 +408,7 @@ function describeFetchError(err: unknown): string {
 }
 
 function buildStatuses(b: MerchantBrain): Record<StageId, StageStatus> {
-  const out: Record<StageId, StageStatus> = {
-    discovery: "pending",
-    prioritization: "pending",
-    design: "pending",
-    delivery: "pending",
-    launch: "pending",
-    support: "pending",
-  };
+  const out = allPending();
   STAGE_ORDER.forEach((s) => {
     if (b.artifacts[s]) out[s] = "complete";
   });
@@ -337,22 +416,24 @@ function buildStatuses(b: MerchantBrain): Record<StageId, StageStatus> {
 }
 
 function allPending(): Record<StageId, StageStatus> {
-  return {
-    discovery: "pending",
-    prioritization: "pending",
-    design: "pending",
-    delivery: "pending",
-    launch: "pending",
-    support: "pending",
-  };
+  return STAGE_ORDER.reduce(
+    (acc, s) => {
+      acc[s] = "pending";
+      return acc;
+    },
+    {} as Record<StageId, StageStatus>,
+  );
 }
 
 function buildHandoffLabels(): string[] {
   return [
     "discovery → prioritization · pain + archetype",
     "prioritization → design · GO + driver tree",
-    "design → delivery · field map + envelope",
+    "design → delivery · field map + envelope + sketch",
     "delivery → launch · tickets + readiness",
     "launch → support · pilots + metrics",
+    "support → marketing · loopback + claims-ready proof points",
+    "marketing → sales · positioning + audience messages",
+    "sales → e2e-test-plan · claims to validate",
   ];
 }

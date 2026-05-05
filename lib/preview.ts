@@ -2,8 +2,11 @@ import type {
   DeliveryArtifact,
   DesignArtifact,
   DiscoveryArtifact,
+  E2eTestPlanArtifact,
   LaunchArtifact,
+  MarketingArtifact,
   PrioritizationArtifact,
+  SalesEnablementArtifact,
   StageId,
   SupportArtifact,
 } from "./types";
@@ -38,6 +41,19 @@ export function previewLine(stage: StageId, artifact: unknown): string {
     case "support": {
       const a = artifact as SupportArtifact;
       return `${a.triageRules.length} triage rules · ${a.riskMonitors.length} risk monitors · loop closes ↻`;
+    }
+    case "marketing": {
+      const a = artifact as MarketingArtifact;
+      return `${a.headlineOptions.length} headlines · ${a.audienceMessages.length} audiences · ${a.channelMix.length} channels`;
+    }
+    case "sales-enablement": {
+      const a = artifact as SalesEnablementArtifact;
+      return `ICP ${a.icp.archetypeId} · ${a.discoveryQuestions.length} questions · ${a.competitiveBattlecard.length}-comp battlecard`;
+    }
+    case "e2e-test-plan": {
+      const a = artifact as E2eTestPlanArtifact;
+      const blockers = a.launchBlockers.length;
+      return `${a.criticalJourneys.length} journeys · ${a.performanceTargets.length} SLOs · ${blockers} launch blockers`;
     }
     default:
       return "";

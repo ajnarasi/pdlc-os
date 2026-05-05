@@ -9,8 +9,10 @@ import type { KarpathyEvalLog, StageId, StageMeta } from "@/lib/types";
 import { KarpathyBadge } from "@/components/karpathy/KarpathyBadge";
 import { KarpathyLog } from "@/components/karpathy/KarpathyLog";
 import { StageArtifactBody } from "./StageArtifactBody";
+import { PanelReview } from "@/components/panel/PanelReview";
 import { SKILL_BINDINGS } from "@/lib/skills";
 import { previewLine } from "@/lib/preview";
+import type { Executor } from "@/lib/settings";
 
 interface StageCardProps {
   stage: StageMeta;
@@ -18,6 +20,10 @@ interface StageCardProps {
   artifact?: unknown;
   evalLog?: KarpathyEvalLog;
   defaultExpanded?: boolean;
+  merchantId?: string;
+  executor?: Executor;
+  apiKey?: string;
+  model?: string;
 }
 
 export function StageCard({
@@ -26,6 +32,10 @@ export function StageCard({
   artifact,
   evalLog,
   defaultExpanded = false,
+  merchantId,
+  executor,
+  apiKey,
+  model,
 }: StageCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [logOpen, setLogOpen] = useState(false);
@@ -41,6 +51,7 @@ export function StageCard({
       initial="hidden"
       animate="visible"
       transition={{ duration: 0.32, ease: EASE_EXPO }}
+      data-stage-kind={stage.kind}
       className={cn(
         "relative overflow-hidden rounded-lg border bg-paperAlt/40 transition-colors",
         status === "running"
@@ -48,6 +59,9 @@ export function StageCard({
           : status === "complete"
             ? "border-rule"
             : "border-rule/60",
+        stage.kind === "extension"
+          ? "bg-paperAlt/20 border-dashed"
+          : "",
       )}
     >
       {status === "running" ? (
@@ -144,6 +158,16 @@ export function StageCard({
                 stage={stage.id as StageId}
                 artifact={artifact}
               />
+
+              {artifact && merchantId && executor ? (
+                <PanelReview
+                  stage={stage.id as StageId}
+                  merchantId={merchantId}
+                  executor={executor}
+                  apiKey={apiKey}
+                  model={model}
+                />
+              ) : null}
 
               <AnimatePresence>
                 {logOpen && evalLog ? (

@@ -5,8 +5,11 @@ import type {
   DeliveryArtifact,
   DesignArtifact,
   DiscoveryArtifact,
+  E2eTestPlanArtifact,
   LaunchArtifact,
+  MarketingArtifact,
   PrioritizationArtifact,
+  SalesEnablementArtifact,
   StageId,
   SupportArtifact,
 } from "@/lib/types";
@@ -37,6 +40,12 @@ export function StageArtifactBody({ stage, artifact }: StageArtifactBodyProps) {
       return <LaunchView a={artifact as LaunchArtifact} />;
     case "support":
       return <SupportView a={artifact as SupportArtifact} />;
+    case "marketing":
+      return <MarketingView a={artifact as MarketingArtifact} />;
+    case "sales-enablement":
+      return <SalesEnablementView a={artifact as SalesEnablementArtifact} />;
+    case "e2e-test-plan":
+      return <E2eTestPlanView a={artifact as E2eTestPlanArtifact} />;
     default:
       return null;
   }
@@ -252,6 +261,24 @@ function DesignView({ a }: { a: DesignArtifact }) {
           ))}
         </ul>
       </div>
+      {a.napkinSketch ? (
+        <div>
+          <div className="eyebrow text-inkFaint">Napkin sketch · checkout surface</div>
+          <pre className="mt-1 overflow-x-auto rounded-md border border-rule bg-paper/60 p-3 font-mono text-[0.66rem] leading-snug text-ink">
+            {a.napkinSketch}
+          </pre>
+        </div>
+      ) : null}
+      {a.prototypePrompt ? (
+        <div>
+          <div className="eyebrow text-inkFaint">
+            v0 / Lovable / Bolt prompt · paste-ready
+          </div>
+          <pre className="mt-1 overflow-x-auto rounded-md border border-accent/30 bg-accentSoft/30 p-3 font-mono text-[0.7rem] leading-relaxed text-ink whitespace-pre-wrap">
+            {a.prototypePrompt}
+          </pre>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -423,6 +450,363 @@ function SupportView({ a }: { a: SupportArtifact }) {
         <div className="eyebrow text-growth">Loop closes ↻</div>
         <p className="mt-1 text-ink">{a.loopback.nextDiscoverySeed}</p>
         <p className="mt-1 text-inkMuted">{a.loopback.rationale}</p>
+      </div>
+    </div>
+  );
+}
+
+function MarketingView({ a }: { a: MarketingArtifact }) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-accent/30 bg-accentSoft/40 p-3">
+        <div className="eyebrow text-accent">Positioning · Post-it</div>
+        <p className="mt-1 font-display text-base leading-snug text-ink">
+          {a.positioningStatement}
+        </p>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div>
+          <div className="eyebrow text-inkFaint">Headline candidates</div>
+          <ul className="mt-1 space-y-1 text-xs">
+            {a.headlineOptions.map((h, i) => (
+              <li
+                key={i}
+                className="rounded-md border border-rule bg-paper/40 p-2 font-display text-sm text-ink"
+              >
+                {h}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <div className="eyebrow text-inkFaint">Subhead candidates</div>
+          <ul className="mt-1 space-y-1 text-xs">
+            {a.subheadOptions.map((s, i) => (
+              <li
+                key={i}
+                className="rounded-md border border-rule bg-paper/40 p-2 text-ink"
+              >
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Audience messages</div>
+        <ul className="mt-1 space-y-1.5 text-xs">
+          {a.audienceMessages.map((m, i) => (
+            <li
+              key={i}
+              className="rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <Chip tone="accent">{m.audience}</Chip>
+              <div className="mt-1 text-alert">pain · {m.painSentence}</div>
+              <div className="mt-0.5 text-growth">relief · {m.reliefSentence}</div>
+              <div className="mt-0.5 font-medium text-ink">cta · {m.cta}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div>
+          <div className="eyebrow text-inkFaint">Proof points</div>
+          <ul className="mt-1 space-y-0.5 text-xs text-inkMuted">
+            {a.proofPoints.map((p, i) => (
+              <li key={i}>· {p}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <div className="eyebrow text-inkFaint">Anti-messages (do NOT say)</div>
+          <ul className="mt-1 space-y-0.5 text-xs text-alert">
+            {a.antiMessages.map((p, i) => (
+              <li key={i}>× {p}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Channel mix</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.channelMix.map((c, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-[auto_1fr_auto] items-start gap-2 rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <Chip tone="muted">{c.sequencingDay}</Chip>
+              <div>
+                <div className="font-medium text-ink">{c.channel}</div>
+                <div className="text-inkMuted">{c.hook}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Launch sequence</div>
+        <ol className="mt-1 space-y-1 text-xs">
+          {a.launchSequence.map((s, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-[auto_1fr] items-baseline gap-2 rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <span className="font-mono text-accent">{s.timing}</span>
+              <span className="text-ink">{s.milestone}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+function SalesEnablementView({ a }: { a: SalesEnablementArtifact }) {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-accent/30 bg-accentSoft/30 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone="accent">
+            ICP · {a.icp.archetypeId} · {a.icp.archetypeName}
+          </Chip>
+          <Chip tone="muted">{a.icp.sizeBand}</Chip>
+          <Chip tone="muted">{a.icp.channel}</Chip>
+          <Chip tone="muted">{a.icp.vertical}</Chip>
+        </div>
+        <div className="mt-2 grid gap-2 text-xs lg:grid-cols-2">
+          <div>
+            <div className="eyebrow text-growth">Qualifying signals</div>
+            <ul className="mt-0.5 space-y-0.5 text-inkMuted">
+              {a.icp.qualifyingSignals.map((s, i) => (
+                <li key={i}>+ {s}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="eyebrow text-alert">Disqualifying signals</div>
+            <ul className="mt-0.5 space-y-0.5 text-inkMuted">
+              {a.icp.disqualifyingSignals.map((s, i) => (
+                <li key={i}>− {s}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Discovery questions</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.discoveryQuestions.map((q, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="font-medium text-ink">Q{i + 1}. {q.question}</div>
+              <div className="mt-0.5 text-inkMuted">listen for · {q.listenFor}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Objection handling</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.objectionHandling.map((o, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="text-alert">"{o.objection}"</div>
+              <div className="mt-0.5 text-ink">reframe · {o.reframe}</div>
+              <div className="mt-0.5 text-accent">evidence · {o.evidence}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Demo script · 5 steps</div>
+        <ol className="mt-1 space-y-1 text-xs">
+          {a.demoScript.map((s, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="font-medium text-ink">{s.step}</div>
+              <div className="mt-0.5 text-inkMuted">they see · {s.whatTheySee}</div>
+              <div className="mt-0.5 text-accent">say · "{s.whatToSay}"</div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Competitive battlecard</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.competitiveBattlecard.map((c) => (
+            <li
+              key={c.competitor}
+              className="rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <div className="font-medium text-ink">{c.competitor}</div>
+              <div className="mt-0.5 grid gap-1 sm:grid-cols-2">
+                <div className="text-growth">we win · {c.whereWeWin}</div>
+                <div className="text-alert">they win · {c.whereTheyWin}</div>
+              </div>
+              <div className="mt-0.5 text-accent">tie-breaker · {c.tieBreaker}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">ROI inputs · gather from buyer</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.roiInputs.map((r, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-[auto_1fr] items-start gap-2 rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <Chip tone="muted">{r.variable}</Chip>
+              <div>
+                <div className="text-ink">{r.prompt}</div>
+                <div className="text-inkMuted">
+                  default · {r.defaultValue}{" "}
+                  <span className="text-inkFaint">({r.sourceOfDefault})</span>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-md border border-growth/40 bg-growthSoft/60 p-3 text-xs">
+        <div className="eyebrow text-growth">Close ask · the literal sentence</div>
+        <p className="mt-1 font-medium text-ink">"{a.closeAsk}"</p>
+      </div>
+    </div>
+  );
+}
+
+function E2eTestPlanView({ a }: { a: E2eTestPlanArtifact }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="eyebrow text-inkFaint">
+          Critical journeys · {a.criticalJourneys.length}
+        </div>
+        <ul className="mt-1 space-y-1.5 text-xs">
+          {a.criticalJourneys.map((j) => (
+            <li key={j.id} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono text-accent">{j.id}</span>{" "}
+                  <span className="font-medium text-ink">{j.title}</span>
+                </div>
+                <Chip tone="muted">{j.persona}</Chip>
+              </div>
+              <ol className="mt-1 ml-4 list-decimal text-inkMuted">
+                {j.steps.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ol>
+              <div className="mt-1 text-growth">
+                ✓ {j.successCriterion}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Regression matrix</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.regressionMatrix.map((r, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="font-medium text-ink">{r.dimension}</div>
+              <div className="mt-0.5 flex flex-wrap gap-1">
+                {r.values.map((v, j) => (
+                  <Chip key={j} tone="muted">
+                    {v}
+                  </Chip>
+                ))}
+              </div>
+              <div className="mt-0.5 text-accent">invariant · {r.mustHold}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Edge cases</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.edgeCases.map((e, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="font-medium text-ink">{e.name}</div>
+              <div className="text-inkMuted">trigger · {e.trigger}</div>
+              <div className="text-inkMuted">expect · {e.expectedBehavior}</div>
+              <div className="text-accent">detect · {e.detectionSignal}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Performance targets · SLOs</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.performanceTargets.map((p, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-[1fr_auto_auto] items-start gap-2 rounded-md border border-rule bg-paper/40 p-2"
+            >
+              <div>
+                <div className="text-ink">{p.metric}</div>
+                <div className="text-inkFaint">source · {p.source}</div>
+              </div>
+              <Chip tone="growth">{p.target}</Chip>
+              <Chip tone={p.blocking ? "alert" : "muted"}>
+                {p.blocking ? "blocking" : "non-blocking"}
+              </Chip>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Launch blockers</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.launchBlockers.map((b, i) => (
+            <li key={i} className="rounded-md border border-alert/30 bg-alertSoft/40 p-2">
+              <div className="text-ink">{b.blocker}</div>
+              <div className="mt-0.5 text-inkMuted">
+                owner · {b.owner} · verified by · {b.howVerified}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Rollback criteria</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.rollbackCriteria.map((r, i) => (
+            <li key={i} className="rounded-md border border-rule bg-paper/40 p-2">
+              <div className="font-mono text-alert">signal · {r.signal}</div>
+              <div className="text-inkMuted">threshold · {r.threshold}</div>
+              <div className="text-ink">action · {r.rollbackAction}</div>
+              <Chip tone="muted">{r.autoOrManual}</Chip>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <div className="eyebrow text-inkFaint">Claims validation · public statement → test</div>
+        <ul className="mt-1 space-y-1 text-xs">
+          {a.claimsValidation.map((c, i) => (
+            <li key={i} className="rounded-md border border-accent/30 bg-accentSoft/30 p-2">
+              <div className="text-ink">"{c.claim}"</div>
+              <div className="mt-0.5 text-accent">proven by · {c.testThatProvesIt}</div>
+              <div className="text-inkFaint">source · {c.source}</div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

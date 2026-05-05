@@ -7,6 +7,9 @@ export const StageIdSchema = z.enum([
   "delivery",
   "launch",
   "support",
+  "marketing",
+  "sales-enablement",
+  "e2e-test-plan",
 ]);
 export type StageId = z.infer<typeof StageIdSchema>;
 
@@ -17,6 +20,24 @@ export const STAGE_ORDER: StageId[] = [
   "delivery",
   "launch",
   "support",
+  "marketing",
+  "sales-enablement",
+  "e2e-test-plan",
+];
+
+export const CANONICAL_STAGES: StageId[] = [
+  "discovery",
+  "prioritization",
+  "design",
+  "delivery",
+  "launch",
+  "support",
+];
+
+export const EXTENSION_STAGES: StageId[] = [
+  "marketing",
+  "sales-enablement",
+  "e2e-test-plan",
 ];
 
 export const EvalVerdictSchema = z.enum(["PASS", "WARN", "FAIL", "PENDING"]);
@@ -140,6 +161,8 @@ export const DesignArtifactSchema = z.object({
   unmappableFields: z.array(
     z.object({ field: z.string(), reason: z.string(), mitigation: z.string() }),
   ),
+  napkinSketch: z.string().optional(),
+  prototypePrompt: z.string().optional(),
 });
 
 export const DeliveryArtifactSchema = z.object({
@@ -192,6 +215,141 @@ export const SupportArtifactSchema = z.object({
   }),
 });
 
+export const MarketingArtifactSchema = z.object({
+  positioningStatement: z.string(),
+  headlineOptions: z.array(z.string()),
+  subheadOptions: z.array(z.string()),
+  audienceMessages: z.array(
+    z.object({
+      audience: z.string(),
+      painSentence: z.string(),
+      reliefSentence: z.string(),
+      cta: z.string(),
+    }),
+  ),
+  proofPoints: z.array(z.string()),
+  channelMix: z.array(
+    z.object({
+      channel: z.string(),
+      hook: z.string(),
+      sequencingDay: z.string(),
+    }),
+  ),
+  launchSequence: z.array(
+    z.object({
+      milestone: z.string(),
+      timing: z.string(),
+    }),
+  ),
+  antiMessages: z.array(z.string()),
+});
+
+export const SalesEnablementArtifactSchema = z.object({
+  icp: z.object({
+    archetypeId: z.string(),
+    archetypeName: z.string(),
+    sizeBand: z.string(),
+    channel: z.string(),
+    vertical: z.string(),
+    qualifyingSignals: z.array(z.string()),
+    disqualifyingSignals: z.array(z.string()),
+  }),
+  discoveryQuestions: z.array(
+    z.object({
+      question: z.string(),
+      listenFor: z.string(),
+    }),
+  ),
+  objectionHandling: z.array(
+    z.object({
+      objection: z.string(),
+      reframe: z.string(),
+      evidence: z.string(),
+    }),
+  ),
+  demoScript: z.array(
+    z.object({
+      step: z.string(),
+      whatTheySee: z.string(),
+      whatToSay: z.string(),
+    }),
+  ),
+  competitiveBattlecard: z.array(
+    z.object({
+      competitor: z.string(),
+      whereWeWin: z.string(),
+      whereTheyWin: z.string(),
+      tieBreaker: z.string(),
+    }),
+  ),
+  roiInputs: z.array(
+    z.object({
+      variable: z.string(),
+      prompt: z.string(),
+      defaultValue: z.string(),
+      sourceOfDefault: z.string(),
+    }),
+  ),
+  closeAsk: z.string(),
+});
+
+export const E2eTestPlanArtifactSchema = z.object({
+  criticalJourneys: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      persona: z.string(),
+      steps: z.array(z.string()),
+      successCriterion: z.string(),
+    }),
+  ),
+  regressionMatrix: z.array(
+    z.object({
+      dimension: z.string(),
+      values: z.array(z.string()),
+      mustHold: z.string(),
+    }),
+  ),
+  edgeCases: z.array(
+    z.object({
+      name: z.string(),
+      trigger: z.string(),
+      expectedBehavior: z.string(),
+      detectionSignal: z.string(),
+    }),
+  ),
+  performanceTargets: z.array(
+    z.object({
+      metric: z.string(),
+      target: z.string(),
+      source: z.string(),
+      blocking: z.boolean(),
+    }),
+  ),
+  launchBlockers: z.array(
+    z.object({
+      blocker: z.string(),
+      owner: z.string(),
+      howVerified: z.string(),
+    }),
+  ),
+  rollbackCriteria: z.array(
+    z.object({
+      signal: z.string(),
+      threshold: z.string(),
+      rollbackAction: z.string(),
+      autoOrManual: z.enum(["auto", "manual", "auto-with-human-cancel"]),
+    }),
+  ),
+  claimsValidation: z.array(
+    z.object({
+      claim: z.string(),
+      testThatProvesIt: z.string(),
+      source: z.string(),
+    }),
+  ),
+});
+
 export const MerchantBrainSchema = z.object({
   runId: z.string(),
   merchantId: z.string(),
@@ -205,6 +363,9 @@ export const MerchantBrainSchema = z.object({
     delivery: DeliveryArtifactSchema.optional(),
     launch: LaunchArtifactSchema.optional(),
     support: SupportArtifactSchema.optional(),
+    marketing: MarketingArtifactSchema.optional(),
+    "sales-enablement": SalesEnablementArtifactSchema.optional(),
+    "e2e-test-plan": E2eTestPlanArtifactSchema.optional(),
   }),
   audit: z.array(AuditEntrySchema),
   evals: z.record(StageIdSchema, KarpathyEvalLogSchema),
@@ -216,6 +377,9 @@ export type DesignArtifact = z.infer<typeof DesignArtifactSchema>;
 export type DeliveryArtifact = z.infer<typeof DeliveryArtifactSchema>;
 export type LaunchArtifact = z.infer<typeof LaunchArtifactSchema>;
 export type SupportArtifact = z.infer<typeof SupportArtifactSchema>;
+export type MarketingArtifact = z.infer<typeof MarketingArtifactSchema>;
+export type SalesEnablementArtifact = z.infer<typeof SalesEnablementArtifactSchema>;
+export type E2eTestPlanArtifact = z.infer<typeof E2eTestPlanArtifactSchema>;
 export type MerchantBrain = z.infer<typeof MerchantBrainSchema>;
 export type AuditEntry = z.infer<typeof AuditEntrySchema>;
 export type KarpathyEvalLog = z.infer<typeof KarpathyEvalLogSchema>;
@@ -232,4 +396,7 @@ export const ARTIFACT_SCHEMA: Record<StageId, z.ZodTypeAny> = {
   delivery: DeliveryArtifactSchema,
   launch: LaunchArtifactSchema,
   support: SupportArtifactSchema,
+  marketing: MarketingArtifactSchema,
+  "sales-enablement": SalesEnablementArtifactSchema,
+  "e2e-test-plan": E2eTestPlanArtifactSchema,
 };
