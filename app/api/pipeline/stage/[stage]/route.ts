@@ -7,9 +7,10 @@ import { StageIdSchema } from "@/lib/server/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Each stage is sized to fit comfortably under any tier's response timeout.
-// Cached: <100ms. Live · Anthropic: 5–10s typical, allow up to 60s for safety.
-export const maxDuration = 60;
+// Stage-level timeout. Cached: <100ms. Live · Anthropic with Sonnet 4.6 +
+// large skill markdown context (Design stage loads 3 SKILL.md files): 30–90s
+// typical, occasionally up to 120s. 300 is the Pro tier cap; gives headroom.
+export const maxDuration = 300;
 
 const RequestBodySchema = z.object({
   merchantId: z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/),
