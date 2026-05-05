@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background: oklch(96% 0.012 75);
+  color: oklch(22% 0.014 60);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "ss02";
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* No ambient gradient — keep the page calm. The editorial register is
+   carried by typography, whitespace, and the warm paper tone, not by chrome. */
+
+::selection {
+  background: oklch(94% 0.04 40);
+  color: oklch(22% 0.014 60);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: oklch(82% 0.008 60); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(72% 0.010 60); }
+
+:focus-visible {
+  outline: 2px solid oklch(48% 0.13 35);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.rule-top { border-top: 1px solid oklch(86% 0.008 60); }
+.rule-bottom { border-bottom: 1px solid oklch(86% 0.008 60); }
+
+/* Restrained eyebrow — small caps, NOT all-caps, lighter tracking. */
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-weight: 500;
+  color: oklch(46% 0.012 60);
+  font-feature-settings: "smcp" 1;
+}
+
+.display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.018em;
+}
+
+/* Subtle paper texture for surfaces that want a hint of warmth. */
+.paper-texture {
+  background-image:
+    radial-gradient(oklch(86% 0.010 60 / 0.18) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
