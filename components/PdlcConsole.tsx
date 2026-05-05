@@ -120,13 +120,13 @@ export function PdlcConsole({
           autoInit: true,
         }),
       });
-      const data = (await res.json()) as ApiRunResponse;
+      const data = await readApiResponse<ApiRunSuccess>(res);
       if (!res.ok || !("ok" in data) || !data.ok) {
         const message = "error" in data ? data.error : "pipeline run failed";
         setRunError(message);
       }
     } catch (err) {
-      setRunError((err as Error).message);
+      setRunError(describeFetchError(err));
     } finally {
       stopFlag.current = true;
       stopPolling();
@@ -135,11 +135,13 @@ export function PdlcConsole({
         const finalRes = await fetch(`/api/brain/${merchantId}`, {
           cache: "no-store",
         });
-        const final = (await finalRes.json()) as ApiBrainResponse;
-        setBrain(final.brain);
-        setCurrentBrainSource(final.source);
-        setCurrentBrainPath(final.path);
-        setStageStatus(buildStatuses(final.brain));
+        const final = await readApiResponse<ApiBrainResponse>(finalRes);
+        if ("brain" in final) {
+          setBrain(final.brain);
+          setCurrentBrainSource(final.source);
+          setCurrentBrainPath(final.path);
+          setStageStatus(buildStatuses(final.brain));
+        }
       } catch {
         // ignore — UI already shows the last polled state
       }
@@ -248,6 +250,46 @@ interface ApiBrainResponse {
   path?: string;
 }
 
+/**
+ * Reads a fetch Response. If the body isn't JSON (server crash, gateway
+ * timeout, Vercel platform error returning HTML), returns a structured error
+ * with the HTTP status and the first 200 chars of the body — so the UI can
+ * surface "Server returned 504 Gateway Timeout (non-JSON). First chars: An
+ * error occurred…" instead of opaque "Unexpected token 'A'…" parse errors.
+ */
+async function readApiResponse<TSuccess>(
+  res: Response,
+): Promise<TSuccess | { error: string }> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      return (await res.json()) as TSuccess | { error: string };
+    } catch (err) {
+      return {
+        error: `Server claimed JSON but the body failed to parse (${res.status} ${res.statusText}): ${(err as Error).message}`,
+      };
+    }
+  }
+  let snippet = "";
+  try {
+    const text = await res.text();
+    snippet = text.slice(0, 200).replace(/\s+/g, " ").trim();
+  } catch {
+    snippet = "(body unreadable)";
+  }
+  return {
+    error: `Server returned ${res.status} ${res.statusText} (non-JSON). First chars: ${snippet}`,
+  };
+}
+
+function describeFetchError(err: unknown): string {
+  if (err instanceof Error) {
+    if (err.name === "AbortError") return "Request was aborted.";
+    return `Network error: ${err.message}`;
+  }
+  return "Unknown error contacting /api/pipeline/run.";
+}
+
 function startBrainPolling(
   merchantId: string,
   onTick: (next: ApiBrainResponse) => void,
@@ -258,8 +300,9 @@ function startBrainPolling(
     try {
       const res = await fetch(`/api/brain/${merchantId}`, { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as ApiBrainResponse;
+      const data = await readApiResponse<ApiBrainResponse>(res);
       if (cancelled) return;
+      if (!("brain" in data)) return;
       onTick(data);
     } catch {
       // swallow — next tick will retry
