@@ -19,10 +19,19 @@ function coerceJsonArray<T extends z.ZodTypeAny>(itemSchema: T) {
   }, z.array(itemSchema));
 }
 
-// Coerce primitives (number / boolean / bigint) to strings. Live LLMs
-// regularly emit `tier: 1` instead of `"1"` for ordinal-like fields under
-// tool_use, even when the JSON schema says "string".
-const looseString = z.coerce.string();
+// Tolerant string. Live LLMs under tool_use occasionally:
+//   (a) emit ordinal-like values as numbers (`tier: 1` instead of `"1"`)
+//   (b) drop a required field entirely (undefined) when uncertain
+//   (c) return null for "not applicable" values
+// All three should not fail the whole stage. Numbers / booleans are
+// String()-coerced; null / undefined become an empty string. The Zod
+// schema itself stays z.string(), so callers can still chain `.min(1)`
+// when they want strictness.
+const looseString = z.preprocess((val) => {
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  return String(val);
+}, z.string());
 
 // Source of truth for valid archetype IDs is the bundled JTBD catalog.
 // Any archetypeId returned by the Discovery stage must exist in the catalog —
@@ -190,20 +199,24 @@ export const DesignArtifactSchema = z.object({
   ),
   fieldMappings: coerceJsonArray(
     z.object({
-      chField: z.string(),
-      chType: z.string(),
-      apmField: z.string(),
-      apmType: z.string(),
-      transform: z.string(),
+      chField: looseString,
+      chType: looseString,
+      apmField: looseString,
+      apmType: looseString,
+      transform: looseString,
       tier: looseString,
-      notes: z.string(),
+      notes: looseString,
     }),
   ),
   isoEnvelope: coerceJsonArray(
-    z.object({ messageType: z.string(), sample: z.string() }),
+    z.object({ messageType: looseString, sample: looseString }),
   ),
   unmappableFields: coerceJsonArray(
-    z.object({ field: z.string(), reason: z.string(), mitigation: z.string() }),
+    z.object({
+      field: looseString,
+      reason: looseString,
+      mitigation: looseString,
+    }),
   ),
   napkinSketch: z.string().optional(),
   prototypePrompt: z.string().optional(),
