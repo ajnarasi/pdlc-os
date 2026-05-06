@@ -42,6 +42,27 @@ const looseString = z.preprocess((val) => {
   return String(val);
 }, z.string());
 
+// Tolerant enum. The model regularly emits enum values that aren't in
+// the allowed set ("feature" / "epic" / "in-progress" / "Go" instead of
+// the canonical labels). Match case-insensitively but always return the
+// canonical casing from the schema, so downstream consumers see the
+// expected literal. Falls back to a sensible default instead of failing
+// the whole stage. The fallback IS visible in the rendered card so the
+// gap stays honest.
+function looseEnum<T extends readonly [string, ...string[]]>(
+  values: T,
+  fallback: T[number],
+) {
+  return z.preprocess((val) => {
+    if (typeof val !== "string") return fallback;
+    const normalized = val.trim().toLowerCase();
+    const match = (values as readonly string[]).find(
+      (v) => v.toLowerCase() === normalized,
+    );
+    return match ?? fallback;
+  }, z.enum(values));
+}
+
 // Source of truth for valid archetype IDs is the bundled JTBD catalog.
 // Any archetypeId returned by the Discovery stage must exist in the catalog —
 // otherwise the model has invented a fake archetype and the audit chain is
@@ -173,9 +194,9 @@ export const DiscoveryArtifactSchema = z.object({
   jtbd: ChristensenJtbdSchema,
   painsRanked: coerceJsonArray(
     z.object({
-      rank: z.number(),
-      pain: z.string(),
-      severity: z.enum(["high", "medium", "low"]),
+      rank: z.coerce.number(),
+      pain: looseString,
+      severity: looseEnum(["high", "medium", "low"] as const, "medium"),
     }),
   ),
   segmentEvidence: coerceJsonArray(z.string()),
@@ -196,8 +217,11 @@ export const PrioritizationArtifactSchema = z.object({
       assumption: z.string(),
     }),
   ),
-  recommendation: z.enum(["GO", "NO-GO", "CONDITIONAL"]),
-  rationale: z.string(),
+  recommendation: looseEnum(
+    ["GO", "NO-GO", "CONDITIONAL"] as const,
+    "CONDITIONAL",
+  ),
+  rationale: looseString,
 });
 
 export const DesignArtifactSchema = z.object({
@@ -234,21 +258,21 @@ export const DesignArtifactSchema = z.object({
 export const DeliveryArtifactSchema = z.object({
   tickets: coerceJsonArray(
     z.object({
-      key: z.string(),
-      title: z.string(),
-      type: z.enum(["story", "task", "spike"]),
+      key: looseString,
+      title: looseString,
+      type: looseEnum(["story", "task", "spike"] as const, "task"),
       estimate: looseString,
-      acceptance: coerceJsonArray(z.string()),
+      acceptance: coerceJsonArray(looseString),
     }),
   ),
   testStubs: coerceJsonArray(
-    z.object({ suite: z.string(), cases: coerceJsonArray(z.string()) }),
+    z.object({ suite: looseString, cases: coerceJsonArray(looseString) }),
   ),
   readinessChecklist: coerceJsonArray(
     z.object({
-      item: z.string(),
-      status: z.enum(["ready", "wip", "blocked"]),
-      owner: z.string(),
+      item: looseString,
+      status: looseEnum(["ready", "wip", "blocked"] as const, "wip"),
+      owner: looseString,
     }),
   ),
 });
@@ -403,10 +427,13 @@ export const E2eTestPlanArtifactSchema = z.object({
   ),
   rollbackCriteria: coerceJsonArray(
     z.object({
-      signal: z.string(),
+      signal: looseString,
       threshold: looseString,
-      rollbackAction: z.string(),
-      autoOrManual: z.enum(["auto", "manual", "auto-with-human-cancel"]),
+      rollbackAction: looseString,
+      autoOrManual: looseEnum(
+        ["auto", "manual", "auto-with-human-cancel"] as const,
+        "manual",
+      ),
     }),
   ),
   claimsValidation: coerceJsonArray(
