@@ -3,18 +3,27 @@ import jtbdCatalog from "@/state/jtbd-catalog.json";
 
 // Defensive coercion: some Anthropic responses return an array field as a
 // JSON-stringified array (e.g. driverTree: "[{...}]") even under tool_use
-// enforcement. Wrap arrays with this helper so we parse the string before
-// validating, instead of failing the whole stage with a Zod error.
+// enforcement. A second observed failure mode is the model emitting a
+// non-JSON prose string ("see the driver tree above…") for an array field.
+// Behavior:
+//   - real arrays: pass through
+//   - JSON-stringified arrays: parse and use
+//   - non-JSON strings / null / undefined: tolerate as empty array so the
+//     rest of the artifact still validates (the cell renders empty rather
+//     than the whole stage stalling). Fail-soft, not silent-corrupt.
 function coerceJsonArray<T extends z.ZodTypeAny>(itemSchema: T) {
   return z.preprocess((val) => {
+    if (Array.isArray(val)) return val;
     if (typeof val === "string") {
       try {
         const parsed = JSON.parse(val);
-        return Array.isArray(parsed) ? parsed : val;
+        if (Array.isArray(parsed)) return parsed;
       } catch {
-        return val;
+        // not JSON — fall through to empty-array tolerance
       }
+      return [];
     }
+    if (val == null) return [];
     return val;
   }, z.array(itemSchema));
 }
