@@ -1,4 +1,5 @@
 import { z } from "zod";
+import jtbdCatalog from "@/state/jtbd-catalog.json";
 
 // Defensive coercion: some Anthropic responses return an array field as a
 // JSON-stringified array (e.g. driverTree: "[{...}]") even under tool_use
@@ -17,6 +18,27 @@ function coerceJsonArray<T extends z.ZodTypeAny>(itemSchema: T) {
     return val;
   }, z.array(itemSchema));
 }
+
+// Coerce primitives (number / boolean / bigint) to strings. Live LLMs
+// regularly emit `tier: 1` instead of `"1"` for ordinal-like fields under
+// tool_use, even when the JSON schema says "string".
+const looseString = z.coerce.string();
+
+// Source of truth for valid archetype IDs is the bundled JTBD catalog.
+// Any archetypeId returned by the Discovery stage must exist in the catalog —
+// otherwise the model has invented a fake archetype and the audit chain is
+// no longer honest.
+const KNOWN_ARCHETYPE_IDS = new Set<string>(
+  (jtbdCatalog as { archetypes: { id: string }[] }).archetypes.map(
+    (a) => a.id,
+  ),
+);
+const ArchetypeIdSchema = z.string().refine(
+  (id) => KNOWN_ARCHETYPE_IDS.has(id),
+  (id) => ({
+    message: `archetypeId '${id}' is not in the bundled JTBD catalog. Valid IDs: ${[...KNOWN_ARCHETYPE_IDS].sort().join(", ")}.`,
+  }),
+);
 
 export const StageIdSchema = z.enum([
   "discovery",
@@ -127,7 +149,7 @@ export const ChristensenJtbdSchema = z.object({
 });
 
 export const DiscoveryArtifactSchema = z.object({
-  archetypeId: z.string(),
+  archetypeId: ArchetypeIdSchema,
   archetypeName: z.string(),
   archetypeBrandClass: z.string(),
   jtbd: ChristensenJtbdSchema,
@@ -173,7 +195,7 @@ export const DesignArtifactSchema = z.object({
       apmField: z.string(),
       apmType: z.string(),
       transform: z.string(),
-      tier: z.string(),
+      tier: looseString,
       notes: z.string(),
     }),
   ),
@@ -193,7 +215,7 @@ export const DeliveryArtifactSchema = z.object({
       key: z.string(),
       title: z.string(),
       type: z.enum(["story", "task", "spike"]),
-      estimate: z.string(),
+      estimate: looseString,
       acceptance: coerceJsonArray(z.string()),
     }),
   ),
@@ -214,7 +236,7 @@ export const LaunchArtifactSchema = z.object({
     z.object({ name: z.string(), archetype: z.string(), rationale: z.string() }),
   ),
   successMetrics: coerceJsonArray(
-    z.object({ metric: z.string(), target: z.string(), rationale: z.string() }),
+    z.object({ metric: z.string(), target: looseString, rationale: z.string() }),
   ),
   competitive: coerceJsonArray(
     z.object({
@@ -228,10 +250,10 @@ export const LaunchArtifactSchema = z.object({
 
 export const SupportArtifactSchema = z.object({
   triageRules: coerceJsonArray(
-    z.object({ signal: z.string(), route: z.string(), sla: z.string() }),
+    z.object({ signal: z.string(), route: z.string(), sla: looseString }),
   ),
   riskMonitors: coerceJsonArray(
-    z.object({ risk: z.string(), threshold: z.string(), alert: z.string() }),
+    z.object({ risk: z.string(), threshold: looseString, alert: z.string() }),
   ),
   loopback: z.object({
     nextDiscoverySeed: z.string(),
@@ -345,9 +367,9 @@ export const E2eTestPlanArtifactSchema = z.object({
   performanceTargets: coerceJsonArray(
     z.object({
       metric: z.string(),
-      target: z.string(),
+      target: looseString,
       source: z.string(),
-      blocking: z.boolean(),
+      blocking: z.coerce.boolean(),
     }),
   ),
   launchBlockers: coerceJsonArray(
@@ -360,7 +382,7 @@ export const E2eTestPlanArtifactSchema = z.object({
   rollbackCriteria: coerceJsonArray(
     z.object({
       signal: z.string(),
-      threshold: z.string(),
+      threshold: looseString,
       rollbackAction: z.string(),
       autoOrManual: z.enum(["auto", "manual", "auto-with-human-cancel"]),
     }),
