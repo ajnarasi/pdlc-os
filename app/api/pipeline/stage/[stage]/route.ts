@@ -3,7 +3,7 @@ import { z } from "zod";
 import { makeExecutor } from "@/lib/server/executors";
 import { loadBrain } from "@/lib/server/brain-store";
 import { runStage } from "@/lib/server/pipeline";
-import { StageIdSchema } from "@/lib/server/schemas";
+import { MerchantBrainSchema, StageIdSchema } from "@/lib/server/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,11 +12,18 @@ export const dynamic = "force-dynamic";
 // typical, occasionally up to 120s. 300 is the Pro tier cap; gives headroom.
 export const maxDuration = 300;
 
+// brainSnapshot is the client's in-memory brain after the previous stage's
+// success. Sending it bypasses any KV read-after-write replication lag in
+// the per-stage chain — without it, stage 8's loadBrain may land on a
+// replica that hasn't seen stage 7's write, silently dropping stage 7
+// from the chain. Optional for backwards compat; required for correctness
+// in the 9-stage flow against multi-region KV.
 const RequestBodySchema = z.object({
   merchantId: z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/),
   executor: z.enum(["cached", "anthropic"]),
   model: z.string().max(120).optional(),
   apiKey: z.string().min(20).max(400).optional(),
+  brainSnapshot: z.unknown().optional(),
 });
 
 export async function POST(
@@ -46,7 +53,7 @@ export async function POST(
       { status: 400 },
     );
   }
-  const { merchantId, executor, model, apiKey } = parsed.data;
+  const { merchantId, executor, model, apiKey, brainSnapshot } = parsed.data;
 
   if (executor === "anthropic") {
     const hasKey = Boolean(apiKey || process.env.ANTHROPIC_API_KEY);
@@ -63,21 +70,40 @@ export async function POST(
 
   const start = Date.now();
   try {
-    const seed = await loadBrain(merchantId);
-    if (seed.source === "fallback-demo") {
-      return NextResponse.json(
-        {
-          error: `No brain found for merchant '${merchantId}'. Call /api/pipeline/init first.`,
-        },
-        { status: 409 },
-      );
+    // Prefer the client-supplied snapshot to avoid stale KV reads. If it
+    // parses cleanly and matches the merchantId, use it as the seed — the
+    // chain is now driven by client state and not by KV replicas. KV
+    // remains the durable store; we still write each stage to it for
+    // page-reload recovery.
+    let seedBrain;
+    let seedSource: "snapshot" | "kv" | "file" | "fallback-demo" = "kv";
+    if (brainSnapshot !== undefined) {
+      const parsedSnap = MerchantBrainSchema.safeParse(brainSnapshot);
+      if (parsedSnap.success && parsedSnap.data.merchantId === merchantId) {
+        seedBrain = parsedSnap.data;
+        seedSource = "snapshot";
+      }
+    }
+    if (!seedBrain) {
+      const loaded = await loadBrain(merchantId);
+      if (loaded.source === "fallback-demo") {
+        return NextResponse.json(
+          {
+            error: `No brain found for merchant '${merchantId}'. Call /api/pipeline/init first.`,
+          },
+          { status: 409 },
+        );
+      }
+      seedBrain = loaded.brain;
+      seedSource = loaded.source;
     }
     const exec = makeExecutor(executor, { apiKey, model });
-    const result = await runStage({ brain: seed.brain, stage, executor: exec });
+    const result = await runStage({ brain: seedBrain, stage, executor: exec });
     return NextResponse.json({
       ok: true,
       merchantId,
       stage,
+      seedSource,
       hash: result.hash,
       durationMs: result.durationMs,
       brain: result.brain,

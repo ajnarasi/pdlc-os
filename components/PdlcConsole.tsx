@@ -120,8 +120,13 @@ export function PdlcConsole({
       }
       setBrain(initData.brain);
 
-      // Track the highest artifact count we've successfully written. Used
-      // by the defensive final fetch to refuse stale KV reads.
+      // Track (a) the latest brain we have in hand to send back as a
+      // snapshot to the next stage, and (b) the highest artifact count
+      // we've successfully written. Both protect against Vercel KV
+      // (Upstash) read-after-write replication lag — without them, stage
+      // N can land on a replica that hasn't seen stage N-1's write,
+      // silently dropping prior stages from the chain.
+      let latestBrain = initData.brain;
       let highestArtifactCount = countArtifacts(initData.brain);
 
       // Step 2 — run each stage as its own request. Each call is ≤60s,
@@ -140,6 +145,9 @@ export function PdlcConsole({
               executor: settings.executor,
               model: settings.model,
               apiKey: settings.apiKey,
+              // Send the latest brain so the server doesn't have to
+              // re-read it from a possibly-stale KV replica.
+              brainSnapshot: latestBrain,
             }),
           },
         );
@@ -155,6 +163,7 @@ export function PdlcConsole({
         }
         setBrain(stageData.brain);
         setStageStatus(buildStatuses(stageData.brain));
+        latestBrain = stageData.brain;
         highestArtifactCount = Math.max(
           highestArtifactCount,
           countArtifacts(stageData.brain),
