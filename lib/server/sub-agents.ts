@@ -72,7 +72,9 @@ export function buildPanelReviewerPrompt(
     `- You MUST submit your review via the submit_review tool. Do not return prose.`,
     `- Be specific. "Looks good" is not a critique. Cite a field, a number, or a missing piece.`,
     `- Score 0–100 honestly. 70 = acceptable, 85 = strong, 95+ = exceptional.`,
-    `- Limit recommendations to 3 — the highest-leverage changes only.`,
+    `- Limit recommendations to 3–5 — the highest-leverage changes only.`,
+    `- The "recommendations" field MUST be an array of strings. Do not return one big string.`,
+    `- Keep "critique" focused; under ~600 words.`,
   ].join("\n");
 
   const userPrompt = [

@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+// Defensive coercion: some Anthropic responses return an array field as a
+// JSON-stringified array (e.g. driverTree: "[{...}]") even under tool_use
+// enforcement. Wrap arrays with this helper so we parse the string before
+// validating, instead of failing the whole stage with a Zod error.
+function coerceJsonArray<T extends z.ZodTypeAny>(itemSchema: T) {
+  return z.preprocess((val) => {
+    if (typeof val === "string") {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : val;
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  }, z.array(itemSchema));
+}
+
 export const StageIdSchema = z.enum([
   "discovery",
   "prioritization",
@@ -113,14 +131,14 @@ export const DiscoveryArtifactSchema = z.object({
   archetypeName: z.string(),
   archetypeBrandClass: z.string(),
   jtbd: ChristensenJtbdSchema,
-  painsRanked: z.array(
+  painsRanked: coerceJsonArray(
     z.object({
       rank: z.number(),
       pain: z.string(),
       severity: z.enum(["high", "medium", "low"]),
     }),
   ),
-  segmentEvidence: z.array(z.string()),
+  segmentEvidence: coerceJsonArray(z.string()),
 });
 
 export const PrioritizationArtifactSchema = z.object({
@@ -131,7 +149,7 @@ export const PrioritizationArtifactSchema = z.object({
     effort: z.number(),
     score: z.number(),
   }),
-  driverTree: z.array(
+  driverTree: coerceJsonArray(
     z.object({
       driver: z.string(),
       lift: z.string(),
@@ -145,8 +163,10 @@ export const PrioritizationArtifactSchema = z.object({
 export const DesignArtifactSchema = z.object({
   apmCode: z.string(),
   pattern: z.string(),
-  endpoints: z.array(z.object({ method: z.string(), path: z.string() })),
-  fieldMappings: z.array(
+  endpoints: coerceJsonArray(
+    z.object({ method: z.string(), path: z.string() }),
+  ),
+  fieldMappings: coerceJsonArray(
     z.object({
       chField: z.string(),
       chType: z.string(),
@@ -157,8 +177,10 @@ export const DesignArtifactSchema = z.object({
       notes: z.string(),
     }),
   ),
-  isoEnvelope: z.array(z.object({ messageType: z.string(), sample: z.string() })),
-  unmappableFields: z.array(
+  isoEnvelope: coerceJsonArray(
+    z.object({ messageType: z.string(), sample: z.string() }),
+  ),
+  unmappableFields: coerceJsonArray(
     z.object({ field: z.string(), reason: z.string(), mitigation: z.string() }),
   ),
   napkinSketch: z.string().optional(),
@@ -166,17 +188,19 @@ export const DesignArtifactSchema = z.object({
 });
 
 export const DeliveryArtifactSchema = z.object({
-  tickets: z.array(
+  tickets: coerceJsonArray(
     z.object({
       key: z.string(),
       title: z.string(),
       type: z.enum(["story", "task", "spike"]),
       estimate: z.string(),
-      acceptance: z.array(z.string()),
+      acceptance: coerceJsonArray(z.string()),
     }),
   ),
-  testStubs: z.array(z.object({ suite: z.string(), cases: z.array(z.string()) })),
-  readinessChecklist: z.array(
+  testStubs: coerceJsonArray(
+    z.object({ suite: z.string(), cases: coerceJsonArray(z.string()) }),
+  ),
+  readinessChecklist: coerceJsonArray(
     z.object({
       item: z.string(),
       status: z.enum(["ready", "wip", "blocked"]),
@@ -186,13 +210,13 @@ export const DeliveryArtifactSchema = z.object({
 });
 
 export const LaunchArtifactSchema = z.object({
-  pilotMerchants: z.array(
+  pilotMerchants: coerceJsonArray(
     z.object({ name: z.string(), archetype: z.string(), rationale: z.string() }),
   ),
-  successMetrics: z.array(
+  successMetrics: coerceJsonArray(
     z.object({ metric: z.string(), target: z.string(), rationale: z.string() }),
   ),
-  competitive: z.array(
+  competitive: coerceJsonArray(
     z.object({
       competitor: z.string(),
       positioning: z.string(),
@@ -203,10 +227,10 @@ export const LaunchArtifactSchema = z.object({
 });
 
 export const SupportArtifactSchema = z.object({
-  triageRules: z.array(
+  triageRules: coerceJsonArray(
     z.object({ signal: z.string(), route: z.string(), sla: z.string() }),
   ),
-  riskMonitors: z.array(
+  riskMonitors: coerceJsonArray(
     z.object({ risk: z.string(), threshold: z.string(), alert: z.string() }),
   ),
   loopback: z.object({
@@ -217,9 +241,9 @@ export const SupportArtifactSchema = z.object({
 
 export const MarketingArtifactSchema = z.object({
   positioningStatement: z.string(),
-  headlineOptions: z.array(z.string()),
-  subheadOptions: z.array(z.string()),
-  audienceMessages: z.array(
+  headlineOptions: coerceJsonArray(z.string()),
+  subheadOptions: coerceJsonArray(z.string()),
+  audienceMessages: coerceJsonArray(
     z.object({
       audience: z.string(),
       painSentence: z.string(),
@@ -227,21 +251,21 @@ export const MarketingArtifactSchema = z.object({
       cta: z.string(),
     }),
   ),
-  proofPoints: z.array(z.string()),
-  channelMix: z.array(
+  proofPoints: coerceJsonArray(z.string()),
+  channelMix: coerceJsonArray(
     z.object({
       channel: z.string(),
       hook: z.string(),
       sequencingDay: z.string(),
     }),
   ),
-  launchSequence: z.array(
+  launchSequence: coerceJsonArray(
     z.object({
       milestone: z.string(),
       timing: z.string(),
     }),
   ),
-  antiMessages: z.array(z.string()),
+  antiMessages: coerceJsonArray(z.string()),
 });
 
 export const SalesEnablementArtifactSchema = z.object({
@@ -251,30 +275,30 @@ export const SalesEnablementArtifactSchema = z.object({
     sizeBand: z.string(),
     channel: z.string(),
     vertical: z.string(),
-    qualifyingSignals: z.array(z.string()),
-    disqualifyingSignals: z.array(z.string()),
+    qualifyingSignals: coerceJsonArray(z.string()),
+    disqualifyingSignals: coerceJsonArray(z.string()),
   }),
-  discoveryQuestions: z.array(
+  discoveryQuestions: coerceJsonArray(
     z.object({
       question: z.string(),
       listenFor: z.string(),
     }),
   ),
-  objectionHandling: z.array(
+  objectionHandling: coerceJsonArray(
     z.object({
       objection: z.string(),
       reframe: z.string(),
       evidence: z.string(),
     }),
   ),
-  demoScript: z.array(
+  demoScript: coerceJsonArray(
     z.object({
       step: z.string(),
       whatTheySee: z.string(),
       whatToSay: z.string(),
     }),
   ),
-  competitiveBattlecard: z.array(
+  competitiveBattlecard: coerceJsonArray(
     z.object({
       competitor: z.string(),
       whereWeWin: z.string(),
@@ -282,7 +306,7 @@ export const SalesEnablementArtifactSchema = z.object({
       tieBreaker: z.string(),
     }),
   ),
-  roiInputs: z.array(
+  roiInputs: coerceJsonArray(
     z.object({
       variable: z.string(),
       prompt: z.string(),
@@ -294,23 +318,23 @@ export const SalesEnablementArtifactSchema = z.object({
 });
 
 export const E2eTestPlanArtifactSchema = z.object({
-  criticalJourneys: z.array(
+  criticalJourneys: coerceJsonArray(
     z.object({
       id: z.string(),
       title: z.string(),
       persona: z.string(),
-      steps: z.array(z.string()),
+      steps: coerceJsonArray(z.string()),
       successCriterion: z.string(),
     }),
   ),
-  regressionMatrix: z.array(
+  regressionMatrix: coerceJsonArray(
     z.object({
       dimension: z.string(),
-      values: z.array(z.string()),
+      values: coerceJsonArray(z.string()),
       mustHold: z.string(),
     }),
   ),
-  edgeCases: z.array(
+  edgeCases: coerceJsonArray(
     z.object({
       name: z.string(),
       trigger: z.string(),
@@ -318,7 +342,7 @@ export const E2eTestPlanArtifactSchema = z.object({
       detectionSignal: z.string(),
     }),
   ),
-  performanceTargets: z.array(
+  performanceTargets: coerceJsonArray(
     z.object({
       metric: z.string(),
       target: z.string(),
@@ -326,14 +350,14 @@ export const E2eTestPlanArtifactSchema = z.object({
       blocking: z.boolean(),
     }),
   ),
-  launchBlockers: z.array(
+  launchBlockers: coerceJsonArray(
     z.object({
       blocker: z.string(),
       owner: z.string(),
       howVerified: z.string(),
     }),
   ),
-  rollbackCriteria: z.array(
+  rollbackCriteria: coerceJsonArray(
     z.object({
       signal: z.string(),
       threshold: z.string(),
@@ -341,7 +365,7 @@ export const E2eTestPlanArtifactSchema = z.object({
       autoOrManual: z.enum(["auto", "manual", "auto-with-human-cancel"]),
     }),
   ),
-  claimsValidation: z.array(
+  claimsValidation: coerceJsonArray(
     z.object({
       claim: z.string(),
       testThatProvesIt: z.string(),

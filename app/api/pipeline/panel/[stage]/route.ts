@@ -21,10 +21,32 @@ const RequestBodySchema = z.object({
   model: z.string().max(120).optional(),
 });
 
+// Reviewers reliably exceed tight character caps and occasionally return
+// `recommendations` as a stringified array. Limits are deliberately generous
+// (the UI clips with line-clamp anyway) and the preprocess accepts strings
+// or string arrays — splitting on newlines / bullets when the model returns
+// a single multi-line block.
 const ReviewSchema = z.object({
   score: z.number().min(0).max(100),
-  critique: z.string().min(1).max(2000),
-  recommendations: z.array(z.string().min(1).max(400)).min(1).max(3),
+  critique: z.string().min(1).max(8000),
+  recommendations: z.preprocess((val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // not JSON — fall through to bullet/newline split
+      }
+      const lines = trimmed
+        .split(/\r?\n+/)
+        .map((s) => s.replace(/^\s*(?:[-*•]\s*|\d+[.)]\s*)/, "").trim())
+        .filter(Boolean);
+      return lines.length ? lines : [trimmed];
+    }
+    return val;
+  }, z.array(z.string().min(1).max(2000)).min(1).max(5)),
 });
 type Review = z.infer<typeof ReviewSchema>;
 
