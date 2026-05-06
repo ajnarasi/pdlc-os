@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PDLC·OS — Investor Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: oklch(96% 0.018 80);
+    --paper-alt: oklch(94% 0.020 80);
+    --rule: oklch(85% 0.020 80);
+    --ink: oklch(22% 0.030 60);
+    --ink-muted: oklch(45% 0.030 60);
+    --ink-faint: oklch(62% 0.025 60);
+    --accent: oklch(56% 0.16 40);
+    --accent-soft: oklch(92% 0.06 40);
+    --growth: oklch(50% 0.13 150);
+    --growth-soft: oklch(92% 0.05 150);
+    --alert: oklch(54% 0.18 25);
+    --alert-soft: oklch(94% 0.06 25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 22px;
+    line-height: 1.45;
+    overflow: hidden;
+    min-height: 100vh;
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    padding: 72px 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 88px;
+    line-height: 0.95;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+  }
+  h1 .accent { color: var(--accent); }
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 56px;
+    line-height: 1.05;
+    margin: 0 0 28px;
+    letter-spacing: -0.015em;
+  }
+  h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 32px;
+    line-height: 1.15;
+    margin: 0 0 20px;
+  }
+  p { margin: 0 0 18px; }
+  p.lede { font-size: 28px; line-height: 1.4; }
+  ul { margin: 0 0 24px; padding-left: 24px; }
+  li { margin-bottom: 10px; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .accent { color: var(--accent); }
+  .muted { color: var(--ink-muted); }
+  .faint { color: var(--ink-faint); }
+  .small { font-size: 17px; }
+  .x-small { font-size: 14px; }
+  .row { display: grid; gap: 32px; }
+  .row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card {
+    border: 1px solid var(--rule);
+    background: var(--paper-alt);
+    padding: 24px 28px;
+    border-radius: 8px;
+  }
+  .card.accent { border-color: oklch(56% 0.16 40 / 0.4); background: var(--accent-soft); }
+  .card .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .card .big {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 48px;
+    line-height: 1;
+    margin: 6px 0;
+    color: var(--accent);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 17px;
+    margin: 12px 0 0;
+  }
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+    text-align: left;
+  }
+  th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+  td.mono-cell { font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  pre.cascade {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    line-height: 1.6;
+    background: var(--paper-alt);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 22px 26px;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  pre.cascade .stage-num { color: var(--accent); font-weight: 500; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 0 0 24px;
+    padding: 6px 0 6px 22px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-size: 26px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .url-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 36px;
+    align-items: baseline;
+    margin-top: 18px;
+  }
+  .url-row .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    margin-right: 8px;
+  }
+  .url-row a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  .footer {
+    position: absolute;
+    bottom: 28px;
+    left: 96px;
+    right: 96px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+  }
+  .footer .brand .accent { color: var(--accent); }
+  .nav-hint {
+    position: fixed;
+    bottom: 14px;
+    right: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    background: var(--paper);
+    padding: 4px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .lead {
+    justify-content: center;
+    text-align: left;
+  }
+  .lead .footer { display: none; }
+  .lead h1 + p.lede { max-width: 880px; color: var(--ink-muted); }
+  .pill {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    border: 1px solid oklch(56% 0.16 40 / 0.4);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 18px;
+  }
+  .strike-hr {
+    height: 1px;
+    background: var(--rule);
+    margin: 28px 0;
+    border: 0;
+  }
+  @media print {
+    .slide { opacity: 1; pointer-events: auto; page-break-after: always; position: relative; min-height: 100vh; }
+    .nav-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Slide 1 — Title -->
+<section class="slide active lead" data-slide="1">
+  <span class="eyebrow">Investor pitch · 2026-05-06</span>
+  <h1>PDLC<span class="accent">·</span>OS</h1>
+  <p class="lede">Compounding institutional memory for the product lifecycle.</p>
+  <p class="lede"><span class="muted">One pain point in. A 9-stage signed brain out. A working prototype in the middle.</span></p>
+  <div class="url-row">
+    <span><span class="label">Live</span><a href="https://pdlc-os.vercel.app/">pdlc-os.vercel.app</a></span>
+    <span><span class="label">Source</span><a href="https://github.com/ajnarasi/pdlc-os">github.com/ajnarasi/pdlc-os</a></span>
+    <span><span class="label">Proof</span><a href="https://grab-nexus-flow.lovable.app/">grab-nexus-flow.lovable.app</a></span>
+  </div>
+</section>
+
+<!-- Slide 2 — Problem -->
+<section class="slide" data-slide="2">
+  <span class="eyebrow">The problem · 01</span>
+  <h2>Where institutional memory goes to die.</h2>
+  <p class="lede">Every product team runs the same six lifecycle stages. Discovery → Support.</p>
+  <p class="lede">Tooling is fragmented. Evidence rarely survives the handoff.</p>
+  <p class="lede">Three quarters in, you're rebuilding context that already exists somewhere in the org.</p>
+  <hr class="strike-hr" />
+  <p class="lede"><strong>The handoff tax is the silent cost in every product org — and it compounds in the wrong direction.</strong></p>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>02 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 3 — Solution -->
+<section class="slide" data-slide="3">
+  <span class="eyebrow">The solution · 02</span>
+  <h2>One brain across<br/>6 canonical + 3 extension stages.</h2>
+  <blockquote>Every stage feeds the next. Every artifact is signed. The brain compounds with every merchant scenario you put through it.</blockquote>
+  <p class="lede"><strong>Not a wiki. Not a chatbot. A memory system for product orgs.</strong></p>
+  <pre class="cascade"><span class="stage-num">01</span> Discovery     → <span class="stage-num">02</span> Prioritization → <span class="stage-num">03</span> Design       → <span class="stage-num">04</span> Delivery
+<span class="stage-num">05</span> Launch        → <span class="stage-num">06</span> Support        → <span class="stage-num">07</span> Marketing    → <span class="stage-num">08</span> Sales Enablement
+                                                            → <span class="stage-num">09</span> E2E Test Plan</pre>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>03 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 4 — Live demo -->
+<section class="slide" data-slide="4">
+  <span class="eyebrow">Live demo · 03</span>
+  <h2>Pain → 9-stage brain in &lt; 2 minutes.</h2>
+  <p class="lede"><strong>Pain point</strong> · <em>"Brazilian buyers abandon at checkout — we don't accept Pix."</em></p>
+  <pre class="cascade"><span class="stage-num">01</span>  Discovery        →  Archetype A1 + Christensen JTBD + ranked pains
+<span class="stage-num">02</span>  Prioritization   →  RICE 10.2 · GO recommendation · driver tree
+<span class="stage-num">03</span>  Design           →  ISO 20022 envelope + field map + Lovable prompt
+<span class="stage-num">04</span>  Delivery         →  4 Linear tickets · 12 Vitest stubs · readiness
+<span class="stage-num">05</span>  Launch           →  GTM brief · 3 pilot merchants · success metrics
+<span class="stage-num">06</span>  Support          →  triage rules · risk monitors · loopback
+<span class="stage-num">07</span>  Marketing        →  positioning · 3 headlines · audience messages
+<span class="stage-num">08</span>  Sales Enablement →  ICP · battlecard · ROI inputs · close ask
+<span class="stage-num">09</span>  E2E Test Plan    →  4 critical journeys · SLOs · rollback criteria</pre>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>04 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 5 — Lovable bridge -->
+<section class="slide" data-slide="5">
+  <span class="eyebrow">The Lovable bridge · 04</span>
+  <h2>Text → working prototype.<br/>No designer in the loop.</h2>
+  <p class="lede">The Design stage emits <strong>a paste-ready prompt</strong> for v0 / Lovable / Bolt. Sixty seconds later, you have a working prototype.</p>
+  <table>
+    <thead><tr><th>What goes in</th><th>What comes out of Design</th></tr></thead>
+    <tbody>
+      <tr><td>One pain point</td><td>A signed PRD across 9 stages</td></tr>
+      <tr><td>Discovery JTBD</td><td>An ASCII napkin sketch</td></tr>
+      <tr><td>Field map + ISO 20022 envelope</td><td>A paste-ready Lovable prompt</td></tr>
+    </tbody>
+  </table>
+  <hr class="strike-hr" />
+  <p class="lede"><span class="pill">Live proof</span></p>
+  <p class="lede"><a href="https://grab-nexus-flow.lovable.app/" class="mono accent">grab-nexus-flow.lovable.app</a></p>
+  <p class="muted small">GrabPay flow. Generated end-to-end from PDLC·OS Design output. No Figma round-trip. No requirements doc translation.</p>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>05 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 6 — Substrate -->
+<section class="slide" data-slide="6">
+  <span class="eyebrow">The substrate · 05</span>
+  <h2>25 archetypes × 803 jobs-to-be-done.</h2>
+  <p class="lede">Not invented for the demo. Extracted from our merchant-research wiki by a deterministic parser. Every artifact traces back to a real archetype's real job.</p>
+  <div class="row cols-3">
+    <div class="card"><div class="num">Archetypes</div><div class="big">25</div><div class="small muted">17 locked · 8 brainstorm-draft. A1-A3, B1-B4, D1-D3, E1-E3, F1-F2, H1-H3, I1-I2, L1-L2, M1-M2, P1.</div></div>
+    <div class="card"><div class="num">Jobs-to-be-done</div><div class="big">803</div><div class="small muted">725 full Christensen + 78 partial. 11 metadata fields per job.</div></div>
+    <div class="card"><div class="num">Lifecycle phases</div><div class="big">11</div><div class="small muted">§3.1 Onboarding → §3.11 Renewal. Encoded in every JTBD ID.</div></div>
+  </div>
+  <hr class="strike-hr" />
+  <p class="lede"><strong>Hallucinated archetypes fail validation.</strong> The schema rejects them at the Discovery stage.</p>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>06 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 7 — Architecture -->
+<section class="slide" data-slide="7">
+  <span class="eyebrow">Architecture · 06 · why this is defensible</span>
+  <h2>Three load-bearing primitives.</h2>
+  <div class="row cols-3">
+    <div class="card">
+      <div class="num">01 · agent loop</div>
+      <h3 style="font-size:24px;">Schema-enforced</h3>
+      <p class="small muted">Every stage uses Anthropic's forced <span class="mono">tool_use</span>. The schema is the contract, not a suggestion.</p>
+    </div>
+    <div class="card">
+      <div class="num">02 · audit ribbon</div>
+      <h3 style="font-size:24px;">Signed</h3>
+      <p class="small muted">SHA chain back to Discovery. Every artifact carries <span class="mono">{stage, agent, eval_score, citations[], hash, parent_hashes[], timestamp}</span>.</p>
+    </div>
+    <div class="card">
+      <div class="num">03 · panel review</div>
+      <h3 style="font-size:24px;">7 perspectives</h3>
+      <p class="small muted">Executive · Engineer · Designer · UXR · Customer Voice · Legal · Skeptic. Runs on any stage on demand. ~10 seconds in parallel.</p>
+    </div>
+  </div>
+  <hr class="strike-hr" />
+  <p class="lede"><strong>Regulator-ready by default. Compliance-ready by default.</strong></p>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>07 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 8 — Leadership view -->
+<section class="slide" data-slide="8">
+  <span class="eyebrow">Leadership view · 07</span>
+  <h2>This is not a productivity tool.<br/>It is a category.</h2>
+  <div class="row cols-2">
+    <div class="card accent">
+      <div class="num">Differentiator 01</div>
+      <h3 style="font-size:26px;">Every artifact is signed.</h3>
+      <p class="small muted">The audit ribbon is a SHA hash chain. Every claim links to its source.</p>
+      <p class="small accent"><strong>FinTech-grade compliance moat.</strong></p>
+    </div>
+    <div class="card accent">
+      <div class="num">Differentiator 02</div>
+      <h3 style="font-size:26px;">The brain compounds.</h3>
+      <p class="small muted">Stage 6 (Support) writes back into next quarter's Discovery seed. Every cycle the substrate gets cheaper to leverage.</p>
+      <p class="small accent"><strong>The first integration pays the substrate cost. Every integration after that pays nothing.</strong></p>
+    </div>
+  </div>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>08 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 9 — Reuse -->
+<section class="slide" data-slide="9">
+  <span class="eyebrow">Built on what already lived in the brain · 08</span>
+  <h2>Nothing new for this hackathon.</h2>
+  <p class="lede">PDLC·OS is the agent layer that ties existing assets into one continuous, evidence-locked workflow.</p>
+  <table>
+    <thead><tr><th>Reuse</th><th>Was already built</th></tr></thead>
+    <tbody>
+      <tr><td>41 PM-OS skills</td><td>Pre-existing PM operating system</td></tr>
+      <tr><td>55-APM Checkout SDK</td><td>239 passing tests</td></tr>
+      <tr><td>Per-merchant Brain pattern</td><td>Fiserv Brain initiative</td></tr>
+      <tr><td>25 locked merchant archetypes</td><td>In-progress merchant research</td></tr>
+    </tbody>
+  </table>
+  <hr class="strike-hr" />
+  <p class="lede"><strong>Built solo, in one weekend.</strong></p>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>09 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 10 — Pain points solved -->
+<section class="slide" data-slide="10">
+  <span class="eyebrow">Pain solved · 09</span>
+  <h2>From quarters to a weekend.</h2>
+  <p class="lede">Every new APM addition (Pix, OXXO, Klarna, GrabPay, Boleto, …) currently costs a quarter of cross-functional work.</p>
+  <p class="lede">PDLC·OS compresses that to a weekend, with the audit trail already in place for the BACEN / scheme-compliance review.</p>
+  <hr class="strike-hr" />
+  <div class="row cols-2">
+    <div>
+      <div class="num">Today</div>
+      <h3 style="font-size:30px;">A quarter, per APM.</h3>
+      <p class="small muted">PRD → designer round-trip → engineering → marketing → sales → QA. Six teams, six tools, six handoffs.</p>
+    </div>
+    <div>
+      <div class="num">With PDLC·OS</div>
+      <h3 style="font-size:30px;">A weekend, per APM.</h3>
+      <p class="small muted">One pain point → 9-stage signed brain → working prototype. Compliance trail already attached.</p>
+    </div>
+  </div>
+  <div class="footer">
+    <span class="brand">PDLC<span class="accent">·</span>OS</span>
+    <span>10 · 11</span>
+  </div>
+</section>
+
+<!-- Slide 11 — Close -->
+<section class="slide lead" data-slide="11">
+  <span class="eyebrow">Close · 10</span>
+  <h1>One pain in.<br/>One PRD out.</h1>
+  <p class="lede" style="font-style: italic; color: var(--ink-muted); max-width:900px;">PDLC·OS turns institutional memory into a compounding asset. The cost of producing a Pix-style integration drops from quarters to a weekend's worth of agent loops. That's the pitch.</p>
+  <hr class="strike-hr" />
+  <div class="url-row">
+    <span><span class="label">Live</span><a href="https://pdlc-os.vercel.app/">pdlc-os.vercel.app</a></span>
+    <span><span class="label">Source</span><a href="https://github.com/ajnarasi/pdlc-os">github.com/ajnarasi/pdlc-os</a></span>
+    <span><span class="label">Proof</span><a href="https://grab-nexus-flow.lovable.app/">grab-nexus-flow.lovable.app</a></span>
+  </div>
+</section>
+
+<div class="nav-hint">← / → · space · home / end</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((el, idx) => el.classList.toggle('active', idx === i));
+    if (history.replaceState) history.replaceState(null, '', '#' + (i + 1));
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(slides.length - 1); }
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A') return;
+    const x = e.clientX / window.innerWidth;
+    if (x > 0.5) show(i + 1); else show(i - 1);
+  });
+  if (location.hash) {
+    const n = parseInt(location.hash.slice(1), 10);
+    if (Number.isFinite(n)) show(n - 1);
+  }
+</script>
+</body>
+</html>
