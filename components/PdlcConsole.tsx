@@ -120,6 +120,10 @@ export function PdlcConsole({
       }
       setBrain(initData.brain);
 
+      // Track the highest artifact count we've successfully written. Used
+      // by the defensive final fetch to refuse stale KV reads.
+      let highestArtifactCount = countArtifacts(initData.brain);
+
       // Step 2 — run each stage as its own request. Each call is ≤60s,
       // safely under any tier / proxy timeout. Audit ribbon updates after
       // each stage settles, so the demo visibly progresses.
@@ -151,23 +155,33 @@ export function PdlcConsole({
         }
         setBrain(stageData.brain);
         setStageStatus(buildStatuses(stageData.brain));
+        highestArtifactCount = Math.max(
+          highestArtifactCount,
+          countArtifacts(stageData.brain),
+        );
       }
-    } catch (err) {
-      setRunError(describeFetchError(err));
-    } finally {
-      stopFlag.current = true;
-      // Defensive final fetch — ONLY trust it if KV returned a real
-      // persisted brain. If KV momentarily misses (transient hiccup right
-      // after the support-stage write), the server falls back to the demo
-      // seed; we must NOT clobber the just-completed live run with that
-      // fallback, or the UI appears to "reset" at the end of a successful
-      // 6-stage run.
+
+      // Optional defensive final fetch — accept ONLY if (a) source is not
+      // the demo fallback AND (b) the fetched brain has at least as many
+      // populated artifacts as we wrote.
+      //
+      // Why the count guard: Vercel KV (Upstash) has read-after-write
+      // replication lag on multi-region setups. Right after the last
+      // stage's write, a fetch can return a stale snapshot from before
+      // the most recent stages landed — source is still "kv", so the
+      // fallback-demo guard alone does not catch it. Without this count
+      // check, stages 7/8/9 silently reset after they completed
+      // successfully (user-report 2026-05-06).
       try {
         const finalRes = await fetch(`/api/brain/${merchantId}`, {
           cache: "no-store",
         });
         const final = await readApiResponse<ApiBrainResponse>(finalRes);
-        if ("brain" in final && final.source !== "fallback-demo") {
+        if (
+          "brain" in final &&
+          final.source !== "fallback-demo" &&
+          countArtifacts(final.brain) >= highestArtifactCount
+        ) {
           setBrain(final.brain);
           setCurrentBrainSource(final.source);
           setCurrentBrainPath(final.path);
@@ -176,6 +190,10 @@ export function PdlcConsole({
       } catch {
         // ignore — UI already shows the last in-flight state.
       }
+    } catch (err) {
+      setRunError(describeFetchError(err));
+    } finally {
+      stopFlag.current = true;
       setIsRunning(false);
     }
   }
@@ -405,6 +423,10 @@ function describeFetchError(err: unknown): string {
     return `Network error: ${err.message}`;
   }
   return "Unknown error contacting /api/pipeline/run.";
+}
+
+function countArtifacts(b: MerchantBrain): number {
+  return STAGE_ORDER.reduce((acc, s) => (b.artifacts[s] ? acc + 1 : acc), 0);
 }
 
 function buildStatuses(b: MerchantBrain): Record<StageId, StageStatus> {
